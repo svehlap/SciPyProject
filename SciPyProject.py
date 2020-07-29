@@ -17,11 +17,10 @@ for group in groups:
     
     # extraxt folder names
     subfolders = [f for f in listdir(join(mypath, group))]
-    # check if further subfolders exist
+    # extract subfolder names
     for subfolder in subfolders:
-    #    if ~isdir(join(mypath, subfolder)):
         files = [f for f in listdir(join(mypath, group, subfolder))]
-        for file in files:
+        for file in files: # extract files from subfolders
             data_tmp = pd.read_csv(join(mypath, group, subfolder, file))
                 
             ls = [1]
@@ -42,15 +41,24 @@ for group in groups:
             
             data = data.append(data_tmp)
 
-
-data.groupby('ExpGroup').describe()
+# print some output
+print('total of %i spines were counted in %i images' %(len(data), len(data.groupby('FileID'))))
 
 # total spine density
 ctrl_ids = data.loc[:,'ExpGroup'] == 'CTRL'
 auto_ids = data.loc[:,'AUTO'] == 'yes'
 
-len(data.loc[:,'SECTION-LENGTH'][ctrl_ids]) / sum(data.loc[:,'SECTION-LENGTH'][ctrl_ids & auto_ids])
+len(data.loc[:,'SECTION-LENGTH'][ctrl_ids]) / sum(data.loc[:,'SECTION-LENGTH'][ctrl_ids & auto_ids].unique())
   
+# retrieve section lengths of individual images
+DendriticLength = np.array(data.loc[ctrl_ids & auto_ids,:].groupby('FileID')['SECTION-LENGTH'].unique())
+for i in range(len(DendriticLength)):
+    DendriticLength[i] = DendriticLength[i].sum() # sum each array withing the array of arrays
+    
+# number of spines per image
+nSpines = np.array(data.loc[ctrl_ids,:].groupby('FileID').nunique()['ID'])   
+# number of spines divided by dendritic length
+SpineDensity = nSpines / DendriticLength
 
 # spine morphology
 # how many neck diameters is nan
@@ -71,13 +79,13 @@ labels = ('CTRL','NMDAR')
         
  
 StuffToPlot = [data.loc[:,'HEAD-DIAMETER'][data.loc[:,'ExpGroup'] == 'CTRL'], data.loc[:,'HEAD-DIAMETER'][data.loc[:,'ExpGroup'] == 'NMDAR']]
-axs[0].hist(StuffToPlot, bins=nbins, density=True, cumulative=True)    
+axs[0].hist(StuffToPlot, bins=nbins, density=True, cumulative=False)    
 axs[0].set_title('Head diameter')     
 StuffToPlot = [data.loc[:,'NECK-DIAMETER'][data.loc[:,'ExpGroup'] == 'CTRL'], data.loc[:,'NECK-DIAMETER'][data.loc[:,'ExpGroup'] == 'NMDAR']]
-axs[1].hist(StuffToPlot, bins=nbins, density=True, cumulative=True)  
+axs[1].hist(StuffToPlot, bins=nbins, density=True, cumulative=False)  
 axs[1].set_title('Neck diameter')            
 StuffToPlot = [data.loc[:,'MAX-DTS'][data.loc[:,'ExpGroup'] == 'CTRL'], data.loc[:,'MAX-DTS'][data.loc[:,'ExpGroup'] == 'NMDAR']]
-axs[2].hist(StuffToPlot, label=labels, bins=nbins, density=True, cumulative=True)   
+axs[2].hist(StuffToPlot, label=labels, bins=nbins, density=True, cumulative=False)   
 axs[2].set_title('Spine length')           
 f.legend()
 

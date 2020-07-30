@@ -49,6 +49,8 @@ ctrl_ids = data.loc[:,'ExpGroup'] == 'CTRL'
 auto_ids = data.loc[:,'AUTO'] == 'yes'
 
 len(data.loc[:,'SECTION-LENGTH'][ctrl_ids]) / sum(data.loc[:,'SECTION-LENGTH'][ctrl_ids & auto_ids].unique())
+
+SpineDensity = [None]*len(groups)
   
 # retrieve section lengths of individual images
 DendriticLength = np.array(data.loc[ctrl_ids & auto_ids,:].groupby('FileID')['SECTION-LENGTH'].unique())

@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 from os import listdir
-from os.path import isfile, isdir, join
 import scipy.stats as stats
 from sklearn.decomposition import PCA
 from sklearn import cluster
@@ -72,11 +71,6 @@ for group_ind, group in enumerate(groups):
 t,p = stats.ttest_ind(SpineDensity[0], SpineDensity[1])
 print('t-test p-value is %g' %(p))
 
-
-#SpineDensityAv = [] 
-#for i in range(len(SpineDensity)):
-#    SpineDensityAv = SpineDensityAv.append(np.mean(SpineDensity[i]))
-    
 ############## plots
 # spine morphology
 data.loc[:,'NECK-DIAMETER'][np.isnan(data.loc[:,'NECK-DIAMETER']) == True] = 0 # get rid of nans

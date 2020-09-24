@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 from os import listdir
+from os.path import isfile, isdir, join
 import scipy.stats as stats
 from sklearn.decomposition import PCA
 from sklearn import cluster

@@ -30,7 +30,7 @@ for group in groups:
         for file in files: # extract files from subfolders
             data_tmp = pd.read_csv(join(mypath, group, subfolder, file))
             
-            # add more columns to the data
+            # add more columns to the ata
             ls = [1]
             ls[0] = group
             ls = ls*len(data_tmp)
@@ -42,10 +42,46 @@ for group in groups:
             data_tmp['MouseID'] = ls
             
             ls = [1]
-            ls[0] = file
+            ls[0] = join(group, subfolder, file) # use this if filenames are not unique
+            #ls[0] = file
             ls = ls*len(data_tmp)
             data_tmp['FileID'] = ls
-                        
+            
+            # append spine density to the data
+            auto_ids = data_tmp.loc[:,'AUTO'] == 'yes' 
+            SpineDensity = [1]
+#            DendriticLength = np.array(data_tmp.loc[auto_ids,:]['SECTION-LENGTH'].unique()).sum()
+            DendriticLength = data_tmp.loc[auto_ids,:]['SECTION-LENGTH'].unique().sum()
+            nSpines = data_tmp.loc[:,:].nunique()['ID']
+            SpineDensity[0] = nSpines / DendriticLength
+            SpineDensity = SpineDensity * len(data_tmp)
+            data_tmp['SpineDensity'] = SpineDensity
+            
+            # classify the spines
+            NeckRatio = 1.1
+            ThinRatio = 2.5
+            HeadDiameterCrit = 0.35
+            
+            HeadDiameter = data_tmp.loc[:,'HEAD-DIAMETER']
+            NeckDiameter = data_tmp.loc[:,'NECK-DIAMETER']
+            
+            MushroomCrit1 = HeadDiameter / NeckDiameter > NeckRatio
+            MushroomCrit2 = HeadDiameter >= HeadDiameterCrit
+            Mushroom = [ MushroomCrit1[i] and MushroomCrit2[i] for i in range(len(MushroomCrit1))] 
+            
+            ThinCrit1 = HeadDiameter / NeckDiameter > NeckRatio
+            ThinCrit2 = HeadDiameter < HeadDiameterCrit
+            Thin = [ ThinCrit1[i] and ThinCrit2[i] for i in range(len(ThinCrit1))]
+            
+            Stubby = np.isnan(NeckDiameter)
+
+            SpineClass = np.array([np.nan] * len(ThinCrit1))
+            SpineClass[Mushroom] = 3 
+            SpineClass[Thin] = 2
+            SpineClass[Stubby] = 1 
+            
+            data_tmp['TYPE'] = SpineClass
+            
             data = data.append(data_tmp) # combine in one big dataframe
 
 
@@ -79,16 +115,16 @@ data.loc[:,'NECK-DIAMETER'][np.isnan(data.loc[:,'NECK-DIAMETER']) == True] = 0 #
 f, axs = plt.subplots(1,3)
 nbins = 15
  
-StuffToPlot = [data.loc[:,'HEAD-DIAMETER'][data.loc[:,'ExpGroup'] == 'CTRL'], data.loc[:,'HEAD-DIAMETER'][data.loc[:,'ExpGroup'] == 'NMDAR']]
-axs[0].hist(StuffToPlot, bins=nbins, density=True, cumulative=False)    
+StuffToPlot = [data.loc[:,'HEAD-DIAMETER'][data.loc[:,'ExpGroup'] == groups[0]], data.loc[:,'HEAD-DIAMETER'][data.loc[:,'ExpGroup'] == groups[1] ]]
+axs[0].hist(StuffToPlot, bins=nbins, density=True, cumulative=True)    
 axs[0].set_title('Head diameter')
 axs[0].set_xlabel('um')    
-StuffToPlot = [data.loc[:,'NECK-DIAMETER'][data.loc[:,'ExpGroup'] == 'CTRL'], data.loc[:,'NECK-DIAMETER'][data.loc[:,'ExpGroup'] == 'NMDAR']]
-axs[1].hist(StuffToPlot, bins=nbins, density=True, cumulative=False)  
+StuffToPlot = [data.loc[:,'NECK-DIAMETER'][data.loc[:,'ExpGroup'] == groups[0]], data.loc[:,'NECK-DIAMETER'][data.loc[:,'ExpGroup'] == groups[1] ]]
+axs[1].hist(StuffToPlot, bins=nbins, density=True, cumulative=True)  
 axs[1].set_title('Neck diameter')            
 axs[1].set_xlabel('um')
-StuffToPlot = [data.loc[:,'MAX-DTS'][data.loc[:,'ExpGroup'] == 'CTRL'], data.loc[:,'MAX-DTS'][data.loc[:,'ExpGroup'] == 'NMDAR']]
-axs[2].hist(StuffToPlot, label=groups, bins=nbins, density=True, cumulative=False)   
+StuffToPlot = [data.loc[:,'MAX-DTS'][data.loc[:,'ExpGroup'] == groups[0]], data.loc[:,'MAX-DTS'][data.loc[:,'ExpGroup'] == groups[1] ]]
+axs[2].hist(StuffToPlot, label=groups, bins=nbins, density=True, cumulative=True)   
 axs[2].set_title('Spine length')           
 axs[2].set_xlabel('um')
 f.legend()
@@ -111,3 +147,15 @@ ax.set_title('PCA reduced data')
 ax.set_xlabel('PC1')
 ax.set_ylabel('PC2')
 plt.savefig('PCA.png')
+
+
+######### looking for outliers
+idxs = data['SpineDensity'] < 1
+data.loc[idxs,:].groupby('FileID').mean()
+
+## mess goes here
+autoIDs = data.loc[:, 'AUTO'] == 'yes' # use only auto spines for dendritic lengths 
+DendriticLength = np.array(data.loc[autoIDs,:].groupby('FileID')['SECTION-LENGTH'].unique())
+
+dataAuto = data.loc[autoIDs, :].groupby('FileID')
+
